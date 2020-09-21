@@ -67,7 +67,7 @@ impl D4File {
                 let tuple = tuple.as_slice();
                 let chr = tuple[0].downcast()?;
                 let begin = tuple.get(1).map(|x| x.downcast::<PyInt>().ok()).unwrap_or(None);
-                let end = tuple.get(1).map(|x| x.downcast::<PyInt>().ok()).unwrap_or(None);
+                let end = tuple.get(2).map(|x| x.downcast::<PyInt>().ok()).unwrap_or(None);
                 (chr, begin, end)
             } else {
                 return Err(std::io::Error::new(std::io::ErrorKind::Other, "Invalid range spec").into());
