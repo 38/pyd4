@@ -11,16 +11,9 @@ for name, size in file.chroms():
     if re.match(r"^chr[0-9XY]*$", name):
         begin = 0
         while begin < size:
-            end = min(begin + 1000000, size)
+            end = min(begin + 10000, size)
             regions.append((name, begin, end))
             begin = end
 
-for ((hist, _, _), r) in zip(file.histogram(regions, 0, 10000), regions):
-    sum = 0
-    count = 0
-    for val, cnt in hist:
-        sum += val * cnt
-        count += cnt
-    if count == 0: 
-        count = 1
-    print(r[0], r[1], r[2], sum / count)
+for (mean, r) in zip(file.mean(regions), regions):
+    print(r[0], r[1], r[2], mean)
