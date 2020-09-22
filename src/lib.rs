@@ -4,7 +4,7 @@ use d4::task::{Histogram, Mean, TaskContext};
 use d4::D4FileReader;
 use pyo3::class::iter::{IterNextOutput, PyIterProtocol};
 use pyo3::prelude::*;
-use pyo3::types::{PyInt, PyString, PyTuple};
+use pyo3::types::{PyInt, PyList, PyString, PyTuple};
 use std::io::Result;
 
 type D4Reader = D4FileReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
@@ -22,6 +22,45 @@ pub struct D4Iter {
 impl D4File {
     fn open(&self) -> Result<D4Reader> {
         D4Reader::open(&self.path)
+    }
+
+    fn parse_range_spec(input: &D4Reader, regions: &PyList) -> PyResult<Vec<(String, u32, u32)>> {
+        let chroms = input.header().chrom_list();
+        let mut spec = vec![];
+        for item in regions.iter() {
+            let (chr, begin, end) = if let Ok(chr) = item.downcast::<PyString>() {
+                (chr, None, None)
+            } else if let Ok(tuple) = item.downcast::<PyTuple>() {
+                let tuple = tuple.as_slice();
+                let chr = tuple[0].downcast()?;
+                let begin = tuple
+                    .get(1)
+                    .map(|x| x.downcast::<PyInt>().ok())
+                    .unwrap_or(None);
+                let end = tuple
+                    .get(2)
+                    .map(|x| x.downcast::<PyInt>().ok())
+                    .unwrap_or(None);
+                (chr, begin, end)
+            } else {
+                return Err(
+                    std::io::Error::new(std::io::ErrorKind::Other, "Invalid range spec").into(),
+                );
+            };
+            let chr = chr.to_str()?;
+            let chrom = chroms.iter().find(|x| x.name == chr);
+            if chrom.is_none() {
+                let msg = format!("Chrom {} doesn't exists", chr);
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, msg).into());
+            }
+            let (begin, end) = match (begin, end) {
+                (Some(start), None) => (start.extract()?, chrom.unwrap().size as u32),
+                (Some(start), Some(end)) => (start.extract()?, end.extract()?),
+                _ => (0, chrom.unwrap().size as u32),
+            };
+            spec.push((chr.to_string(), begin, end));
+        }
+        Ok(spec)
     }
 }
 
@@ -66,41 +105,7 @@ impl D4File {
         max: i32,
     ) -> PyResult<Vec<(Vec<(i32, u32)>, u32, u32)>> {
         let mut input = self.open()?;
-        let chroms = input.header().chrom_list();
-        let mut spec = vec![];
-        for item in regions.iter() {
-            let (chr, begin, end) = if let Ok(chr) = item.downcast::<PyString>() {
-                (chr, None, None)
-            } else if let Ok(tuple) = item.downcast::<PyTuple>() {
-                let tuple = tuple.as_slice();
-                let chr = tuple[0].downcast()?;
-                let begin = tuple
-                    .get(1)
-                    .map(|x| x.downcast::<PyInt>().ok())
-                    .unwrap_or(None);
-                let end = tuple
-                    .get(2)
-                    .map(|x| x.downcast::<PyInt>().ok())
-                    .unwrap_or(None);
-                (chr, begin, end)
-            } else {
-                return Err(
-                    std::io::Error::new(std::io::ErrorKind::Other, "Invalid range spec").into(),
-                );
-            };
-            let chr = chr.to_str()?;
-            let chrom = chroms.iter().find(|x| x.name == chr);
-            if chrom.is_none() {
-                let msg = format!("Chrom {} doesn't exists", chr);
-                return Err(std::io::Error::new(std::io::ErrorKind::Other, msg).into());
-            }
-            let (begin, end) = match (begin, end) {
-                (Some(start), None) => (start.extract()?, chrom.unwrap().size as u32),
-                (Some(start), Some(end)) => (start.extract()?, end.extract()?),
-                _ => (0, chrom.unwrap().size as u32),
-            };
-            spec.push((chr.to_string(), begin, end));
-        }
+        let spec = Self::parse_range_spec(&input, regions)?;
         let result = TaskContext::<_, _, Histogram>::new(&mut input, &spec, min..max)?.run();
         let mut buf = vec![];
         for (_, _, _, (below, hist, above)) in result {
@@ -112,41 +117,7 @@ impl D4File {
 
     pub fn mean(&self, regions: &pyo3::types::PyList) -> PyResult<Vec<f64>> {
         let mut input = self.open()?;
-        let chroms = input.header().chrom_list();
-        let mut spec = vec![];
-        for item in regions.iter() {
-            let (chr, begin, end) = if let Ok(chr) = item.downcast::<PyString>() {
-                (chr, None, None)
-            } else if let Ok(tuple) = item.downcast::<PyTuple>() {
-                let tuple = tuple.as_slice();
-                let chr = tuple[0].downcast()?;
-                let begin = tuple
-                    .get(1)
-                    .map(|x| x.downcast::<PyInt>().ok())
-                    .unwrap_or(None);
-                let end = tuple
-                    .get(2)
-                    .map(|x| x.downcast::<PyInt>().ok())
-                    .unwrap_or(None);
-                (chr, begin, end)
-            } else {
-                return Err(
-                    std::io::Error::new(std::io::ErrorKind::Other, "Invalid range spec").into(),
-                );
-            };
-            let chr = chr.to_str()?;
-            let chrom = chroms.iter().find(|x| x.name == chr);
-            if chrom.is_none() {
-                let msg = format!("Chrom {} doesn't exists", chr);
-                return Err(std::io::Error::new(std::io::ErrorKind::Other, msg).into());
-            }
-            let (begin, end) = match (begin, end) {
-                (Some(start), None) => (start.extract()?, chrom.unwrap().size as u32),
-                (Some(start), Some(end)) => (start.extract()?, end.extract()?),
-                _ => (0, chrom.unwrap().size as u32),
-            };
-            spec.push((chr.to_string(), begin, end));
-        }
+        let spec = Self::parse_range_spec(&input, regions)?;
         let result = TaskContext::<_, _, Mean>::new(&mut input, &spec, ())?.run();
         let mut buf = vec![];
         for (_, _, _, res) in result {
