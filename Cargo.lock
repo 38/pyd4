@@ -189,17 +189,39 @@ dependencies = [
 
 [[package]]
 name = "d4"
-version = "0.1.0"
-source = "git+https://github.com/38/d4-format.git#994e1f615b3a2219031de4694d796a0b77dca9c7"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c92760370376acab2fdb370fed3da92414815692cc2e70ae3434c919a1782c8b"
 dependencies = [
+ "d4-framefile",
+ "d4-hts",
  "flate2",
- "framefile",
- "hts",
  "rand",
  "rayon",
  "serde",
  "serde_derive",
  "serde_json",
+]
+
+[[package]]
+name = "d4-framefile"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14dee182c8c0de709c6dfa107a62b658fab5bbe7dbfdc5ee94d9f90d8c16d5f2"
+dependencies = [
+ "flate2",
+ "memmap",
+ "serde",
+]
+
+[[package]]
+name = "d4-hts"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe293bcb603a37af8df84a0b49e2dbc619dd5ae6f359c372b0f68d20795483d6"
+dependencies = [
+ "bindgen",
+ "pkg-config",
 ]
 
 [[package]]
@@ -231,16 +253,6 @@ dependencies = [
  "crc32fast",
  "libc",
  "miniz_oxide",
-]
-
-[[package]]
-name = "framefile"
-version = "0.1.0"
-source = "git+https://github.com/38/d4-format.git#994e1f615b3a2219031de4694d796a0b77dca9c7"
-dependencies = [
- "flate2",
- "memmap",
- "serde",
 ]
 
 [[package]]
@@ -278,15 +290,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3deed196b6e7f9e44a2ae8d94225d80302d81208b1bb673fd21fe634645c85a9"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "hts"
-version = "0.1.1"
-source = "git+https://github.com/38/d4-format.git#994e1f615b3a2219031de4694d796a0b77dca9c7"
-dependencies = [
- "bindgen",
- "num_cpus",
 ]
 
 [[package]]
@@ -517,6 +520,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 
 [[package]]
+name = "pkg-config"
+version = "0.3.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -539,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "pyd4"
-version = "0.1.0"
+version = "0.1.13"
 dependencies = [
  "d4",
  "pyo3",

@@ -9,11 +9,13 @@ use std::io::Result;
 
 type D4Reader = D4FileReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
 
+/// Python object for reading a D4 file
 #[pyclass]
 pub struct D4File {
     path: String,
 }
 
+/// Value iterator for D4 file
 #[pyclass]
 pub struct D4Iter {
     _inner: D4Reader,
@@ -80,6 +82,9 @@ impl PyIterProtocol for D4Iter {
 
 #[pymethods]
 impl D4File {
+    /// Open a new D4 file for read
+    ///
+    /// Path: path to the D4 file
     #[new]
     pub fn new(path: &str) -> PyResult<Self> {
         let _inner = D4Reader::open(path)?;
@@ -88,6 +93,7 @@ impl D4File {
         })
     }
 
+    /// Returns a list of chromosomes defined in the D4 file
     pub fn chroms(&self) -> PyResult<Vec<(String, usize)>> {
         Ok(self
             .open()?
@@ -97,7 +103,15 @@ impl D4File {
             .map(|x| (x.name.clone(), x.size))
             .collect())
     }
-
+    
+    /// Returns the hisgoram of values in the given regions
+    ///
+    /// regions: The list of regions we are asking
+    /// min: The smallest bucket of the histogram
+    /// max: The biggest bucket of the histogram
+    ///
+    /// The return value is a list of histograms (including the conut of below min and above max
+    /// items)
     pub fn histogram(
         &self,
         regions: &pyo3::types::PyList,
@@ -115,6 +129,7 @@ impl D4File {
         Ok(buf)
     }
 
+    /// Compute the mean dpeth for the given region
     pub fn mean(&self, regions: &pyo3::types::PyList) -> PyResult<Vec<f64>> {
         let mut input = self.open()?;
         let spec = Self::parse_range_spec(&input, regions)?;
@@ -126,6 +141,7 @@ impl D4File {
         Ok(buf)
     }
 
+    /// Returns a value iterator that iterates over the given region
     pub fn value_iter(&self, chr: &str, left: u32, right: u32) -> PyResult<D4Iter> {
         let mut inner = self.open()?;
         let partition = inner.split(None)?;
