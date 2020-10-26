@@ -25,7 +25,7 @@ from pyd4 import D4File
 file = D4File("test.d4")
 
 # Print the chrom list
-print(file.chrom())
+print(file.chroms())
 
 # Get the mean cov for region chr1:10000000-20000000
 print(file.mean([("chr1", 10000000, 20000000)]))
