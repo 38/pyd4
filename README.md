@@ -35,6 +35,6 @@ print(file.mean([("chr1", 10000000, 20000000)]))
 print(file.histogram([("chr1", 10000000, 20000000)], 0, 1000))
 
 # Get a iterator over values
-for i in file.iter("chr1", 0, 10000):
+for i in file.value_iter("chr1", 0, 10000):
 	print(i)
 ```
