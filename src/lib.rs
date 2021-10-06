@@ -91,6 +91,18 @@ impl D4File {
         })
     }
 
+    pub fn list_tracks(&self) -> PyResult<Vec<String>> {
+        let mut tracks = Vec::new();
+        d4::find_tracks_in_file(&self.path, |_| true, &mut tracks)?;
+        Ok(tracks.into_iter().map(|x| x.to_string_lossy().to_string()).collect())
+    }
+
+    pub fn open_track(&self, track: &str) -> PyResult<Self> {
+        let path = format!("{}:{}", self.path, track);
+        let _inner : D4TrackReader = D4TrackReader::open(&path)?;
+        Ok(Self { path })
+    }
+
     /// Returns a list of chromosomes defined in the D4 file
     pub fn chroms(&self) -> PyResult<Vec<(String, usize)>> {
         Ok(self
