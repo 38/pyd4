@@ -1,13 +1,11 @@
-use d4::ptab::{DecodeResult, PTablePartitionReader, UncompressedReader};
-use d4::stab::{RangeRecord, STablePartitionReader, SimpleKeyValueReader};
-use d4::task::{Histogram, Mean, TaskContext};
-use d4::D4FileReader;
+use d4::ptab::{DecodeResult, PTablePartitionReader};
+use d4::stab::STablePartitionReader;
+use d4::task::{Histogram, Mean, Task, TaskContext};
+use d4::D4TrackReader;
 use pyo3::class::iter::{IterNextOutput, PyIterProtocol};
 use pyo3::prelude::*;
 use pyo3::types::{PyInt, PyList, PyString, PyTuple};
 use std::io::Result;
-
-type D4Reader = D4FileReader<UncompressedReader, SimpleKeyValueReader<RangeRecord>>;
 
 /// Python object for reading a D4 file
 #[pyclass]
@@ -18,15 +16,15 @@ pub struct D4File {
 /// Value iterator for D4 file
 #[pyclass]
 pub struct D4Iter {
-    _inner: D4Reader,
+    _inner: D4TrackReader,
     iter: Box<dyn Iterator<Item = i32> + Send + 'static>,
 }
 impl D4File {
-    fn open(&self) -> Result<D4Reader> {
-        D4Reader::open(&self.path)
+    fn open(&self) -> Result<D4TrackReader> {
+        D4TrackReader::open(&self.path)
     }
 
-    fn parse_range_spec(input: &D4Reader, regions: &PyList) -> PyResult<Vec<(String, u32, u32)>> {
+    fn parse_range_spec(input: &D4TrackReader, regions: &PyList) -> PyResult<Vec<(String, u32, u32)>> {
         let chroms = input.header().chrom_list();
         let mut spec = vec![];
         for item in regions.iter() {
@@ -87,7 +85,7 @@ impl D4File {
     /// Path: path to the D4 file
     #[new]
     pub fn new(path: &str) -> PyResult<Self> {
-        let _inner = D4Reader::open(path)?;
+        let _inner: D4TrackReader = D4TrackReader::open(path)?;
         Ok(Self {
             path: path.to_string(),
         })
@@ -119,8 +117,8 @@ impl D4File {
         max: i32,
     ) -> PyResult<Vec<(Vec<(i32, u32)>, u32, u32)>> {
         let mut input = self.open()?;
-        let spec = Self::parse_range_spec(&input, regions)?;
-        let result = TaskContext::<_, _, Histogram>::new(&mut input, &spec, min..max)?.run();
+        let spec = Self::parse_range_spec(&input, regions)?.into_iter().map(|(chr, beg, end)| Histogram::with_bin_range(&chr, beg, end, min..max)).collect();
+        let result = TaskContext::new(&mut input, spec)?.run();
         let mut buf = vec![];
         for (_, _, _, (below, hist, above)) in result {
             let hist: Vec<_> = (min..).zip(hist.into_iter()).collect();
@@ -133,7 +131,7 @@ impl D4File {
     pub fn mean(&self, regions: &pyo3::types::PyList) -> PyResult<Vec<f64>> {
         let mut input = self.open()?;
         let spec = Self::parse_range_spec(&input, regions)?;
-        let result = TaskContext::<_, _, Mean>::new(&mut input, &spec, ())?.run();
+        let result = Mean::create_task(&mut input, &spec)?.run();
         let mut buf = vec![];
         for (_, _, _, res) in result {
             buf.push(res);
@@ -153,7 +151,7 @@ impl D4File {
             .map(move |(mut ptab, mut stab)| {
                 let (part_chr, begin, end) = ptab.region();
                 let part_chr = part_chr.to_string();
-                let pd = ptab.as_decoder();
+                let pd = ptab.make_decoder();
                 (if part_chr != chr {
                     0..0
                 } else {

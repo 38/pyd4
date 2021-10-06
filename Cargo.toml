@@ -5,7 +5,8 @@ authors = ["Hao Hou <haohou302@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-d4 = "0.1.13"
+#d4 = "0.1.13"
+d4 = { git = "https://github.com/38/d4-format.git" }
 pyo3 = "0.12.1"
 rayon = "1.4.0"
 
