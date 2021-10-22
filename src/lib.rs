@@ -139,7 +139,7 @@ impl D4File {
         Ok(buf)
     }
 
-    /// Compute the mean dpeth for the given region
+    /// Compute the mean depth for the given region
     pub fn mean(&self, regions: &pyo3::types::PyList) -> PyResult<Vec<f64>> {
         let mut input = self.open()?;
         let spec = Self::parse_range_spec(&input, regions)?;
